@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width" />
+
+    <style>
+      body { font-family: Tahoma, Geneva, sans-serif; }
+    </style>
+
+    <!-- colyseus.js client -->
+    <script type="text/javascript" src="https://unpkg.com/colyseus.js@^0.14.0/dist/colyseus.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.js" integrity="sha512-dqw6X88iGgZlTsONxZK9ePmJEFrmHwpuMrsUChjAw1mRUhUITE5QU9pkcSox+ynfLhL15Sv2al5A0LVyDCmtUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css" integrity="sha512-8bHTC73gkZ7rZ7vpqUQThUDhqcNFyYi2xgDgPDHc+GXVGHXq+xPjynxIopALmOPqzo9JZj0k6OqqewdGO3EsrQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style type="text/css">
+      .player {
+        width: 100px;
+        height: 100px;
+        position: absolute;
+        padding-top: 24px;
+        box-sizing: border-box;
+        left: 0;
+        top: 0;
+      }
+    </style>
+
+  </head>
+  <body>
+    <h1>
+      <a href="https://github.com/colyseus/colyseus-examples"><img src="https://cdn.jsdelivr.net/gh/colyseus/colyseus@master/media/header.png" height="100" alt="colyseus" /></a>
+    </h1>
+
+    <strong>Messages</strong><br>
+
+    <form id="form">
+      <input type="text" id="input" value="" autofocus/>
+      <input type="submit" value="send" />
+    </form>
+
+    <div id="messages" class="ui small feed">
+      <div class="event"><div class="label"><img src="assets/images/avatar/elliot.jpg"></div><div class="content"><div class="summary">Elliot Fu added you as a friend<div class="date">1 Hour Ago</div></div></div></div>
+
+
+
+    </div>
+    <div id="player"></div>
+    <div id="teams" class="ui eight doubling cards">
+      <!-- <div class="ui centered card"><div class="blurring dimmable image center"><div class="ui inverted dimmer">
+        <div class="content"><div class="center"><div class="ui primary button">Draft Team</div>
+              </div></div></div><img class="ui middle aligned small" src="
+              assets/images/teamlogos/ARI.svg
+              "></div><div class="content"><i class="right floated star icon"></i><a class="header">
+                Arizona Cardinals
+              </a></div></div>
+      <div class="ui centered card">
+        <div class="blurring dimmable image">
+          <div class="ui inverted dimmer">
+            <div class="content">
+              <div class="center">
+                <div class="ui primary button">Draft Team</div>
+              </div>
+            </div>
+          </div>
+          <img class="ui middle aligned small" src="assets/images/teamlogos/BUF.svg">
+        </div>
+        <div class="content">
+          <a class="header">Arizona Cardinals</a>
+        </div>
+      </div>
+      <div class="ui centered card">
+        <div class="blurring dimmable image center">
+          <div class="ui inverted dimmer">
+            <div class="content">
+              <div class="center">
+                <div class="ui primary button">Draft Team</div>
+              </div>
+            </div>
+          </div>
+          <img src="assets/images/teamlogos/BAL.svg">
+        </div>
+        <div class="content">
+          <a class="header">Arizona Cardinals</a>
+        </div>
+      </div>
+      <div class="ui centered card">
+        <div class="blurring dimmable image center">
+          <div class="ui inverted dimmer">
+            <div class="content">
+              <div class="center">
+                <div class="ui primary button">Draft Team</div>
+              </div>
+            </div>
+          </div>
+          <img src="assets/images/teamlogos/PHI.svg">
+        </div>
+        <div class="content">
+          <a class="header">Arizona Cardinals</a>
+        </div>
+      </div> -->
+
+    </div>
+    <div id="selectableTeams" class="ui eight doubling cards"></div>
+    
+    <script>
+        var host = window.document.location.host.replace(/:.*/, '');
+
+        var client = new Colyseus.Client(location.protocol.replace("http", "ws") + "//" + host + (location.port ? ':' + location.port : ''));
+        var room;
+
+        client.joinOrCreate("draftRoom","black").then(room_instance => {
+            room = room_instance
+            room.onStateChange.once(function(state) {
+                console.log("initial room state:", state);
+            });
+
+            var players = {};
+            var colors = ['red', 'green', 'yellow', 'blue', 'cyan', 'magenta'];
+
+            // listen to patches coming from the server
+            room.state.players.onAdd = function (player, sessionId) {
+                //colors[Math.floor(Math.random() * colors.length)];
+                players[sessionId] = player;
+            }
+            room.onStateChange((state) => {
+              console.log("the room state has been updated:", state);
+              updatePlayers(room.state.players);
+              //console.log("roomstatteams",room.state.teams);
+              updateSelectableTeams(room.state.teams);
+            });
+            room.state.players.onChange = function (changes) {
+                    console.log("player on change called for: ",player)
+                    console.log("changes:",changes)
+                    updatePlayers(room.state.players);
+                    console.log("roomstatteams",room.state.teams);
+                    updateSelectableTeams(room.state.teams);
+                }
+
+            room.state.players.onRemove = function (player, sessionId) {
+                var p = document.createElement("p");
+                p.innerText = sessionId + " removed with on Remove.";
+                document.querySelector("#messages").appendChild(p);
+                delete players[sessionId];
+            }
+
+            
+            room.onMessage("hello", (message) => {
+                console.log(message);
+            });
+
+            room.onMessage("messages", function(message) {
+                var timestamp=new Date(Date.now());
+                console.log(timestamp);
+                timestamp = timestamp.toLocaleString('de-DE');
+                console.log(timestamp);
+                var html = '<div class="event"><div class="label"><img src="assets/images/avatar/elliot.jpg"></div><div class="content"><div class="summary">' + message +  '<div class="date">'+ timestamp +'</div></div></div></div>';
+                console.log(message);
+                $("#messages").append(html);
+                updateSelectableTeams(room.state.teams);
+            });
+            room.onMessage("colormessages", function(data) {
+                console.log(data.message);
+                console.log(data.color);
+                var p = document.createElement("p");
+                p.innerText = data.message+":"+data.color;
+                document.querySelector("#messages").appendChild(p);
+            });
+
+            function updatePlayers(players){
+              console.log("updatePlayers called");
+              var input = document.querySelector("#player");
+              input.innerHTML = "";
+              players.forEach (function (player, index) {
+                  console.log("i:${index} | Player:", player.playerName);
+                  var p = document.createElement("p");
+                  p.innerText = player.playerName;
+                  input.appendChild(p);
+              });
+            }
+            /*
+            function updateSelectableTeams(selectableTeams){
+              $("#selectableTeams").empty();
+              selectableTeams.forEach (function (selectableTeam, key) {
+                console.log(JSON.stringify(selectableTeam));
+                console.log("i:",key," | selectableTeam:", selectableTeam.name);
+                $('<a>',{
+                  text: selectableTeam.name,
+                  title: selectableTeam.name,
+                  href: '',
+                  click: function(){ myFunction(selectableTeam);return false;}
+                                  }).appendTo("#selectableTeams");                        
+              });
+            }
+            */
+            function updateSelectableTeams(selectableTeams){
+              $("#selectableTeams").empty();
+              selectableTeams.forEach (function (selectableTeam, key) {
+                console.log(JSON.stringify(selectableTeam));
+                console.log("i:",key," | selectableTeam:", selectableTeam.name);
+                createCard("#Teams","ARI.svg",selectableTeam.name);
+              });
+            }
+
+
+            
+            function myFunction(selectedTeam) {
+              console.log("Selected Team:", selectedTeam.name);
+              console.log(selectedTeam);
+              console.log(JSON.stringify(selectedTeam));
+              room.send("draftTeam", {draftedTeam: selectedTeam})
+            }
+
+            function createCard (target,image,teamname) {
+              var html = '<div class="ui centered card"><div class="blurring dimmable image center"><div class="ui inverted dimmer">';
+              html += '<div class="content"><div class="center"><div class="ui primary button">Draft Team</div>';
+              html += '</div></div></div><img class="ui middle aligned small" src="assets/images/teamlogos/';
+              html += image;
+              html += '"></div><div class="content"><i class="right floated star icon"></i><a class="header">';
+              html += teamname;
+              html += '</a></div></div>';
+              console.log(html);
+              $( "p" ).add( html ).appendTo( $("#selectableTeams") );
+//              $( "p" ).add( html ).appendTo("#Teams");
+            }
+            
+
+
+            // send message to room on submit
+            document.querySelector("#form").onsubmit = function(e) {
+                e.preventDefault();
+
+                var input = document.querySelector("#input");
+                var inputcolor = colors[Math.floor(Math.random() * colors.length)];
+
+                console.log("input:", input.value);
+                console.log("inputcolor:", inputcolor);
+
+                // send data to room
+                room.send("colormessage", { message: input.value, color: inputcolor});
+                // clear input
+                input.value = "";
+              }
+            
+              $(document).ready(function() {
+                $('.special.card .image').dimmer({
+                  on: 'hover'
+                });
+                $('.star.rating').rating();
+                $('.card .dimmer').dimmer({
+                  on: 'hover'
+                });
+              });
+
+        
+
+        });
+
+
+
+    </script>
+  </body>
+</html>
