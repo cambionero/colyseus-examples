@@ -199,6 +199,7 @@
                 console.log("i:",key," | selectableTeam:", selectableTeam.name);
                 createCard("#Teams","ARI.svg",selectableTeam.name);
               });
+              addCardFunctions();
             }
 
 
@@ -241,7 +242,7 @@
                 input.value = "";
               }
             
-              $(document).ready(function() {
+            function addCardFunctions() {
                 $('.special.card .image').dimmer({
                   on: 'hover'
                 });
@@ -249,7 +250,7 @@
                 $('.card .dimmer').dimmer({
                   on: 'hover'
                 });
-              });
+            }
 
         
 
